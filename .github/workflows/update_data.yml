@@ -1,0 +1,39 @@
+name: Daily Taiwan Stock Market Data Update
+
+on:
+  schedule:
+    # 台灣時間週一至週五 16:30 (UTC 08:30) 自動執行 (盤後結算後)
+    - cron: '30 8 * * 1-5'
+  workflow_dispatch: # 支援在 GitHub 網頁上手動點擊測試
+
+permissions:
+  contents: write
+
+jobs:
+  update-market-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 簽出儲存庫 (Checkout)
+        uses: actions/checkout@v4
+
+      - name: 設定 Python 環境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 執行市場數據更新腳本
+        run: |
+          python update_market_data.py
+
+      - name: 自動提交並推送更新 (Commit & Push)
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html stock_database.json || true
+          if git diff --staged --quiet; then
+            echo "No market data changes to commit."
+          else
+            git commit -m "自動更新：台股每日盤後真實行情與三大法人籌碼 ($(date +'%Y-%m-%d'))"
+            git push
+          fi
